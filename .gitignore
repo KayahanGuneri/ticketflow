@@ -42,3 +42,13 @@ failsafe-reports/
 # Temporary files
 tmp/
 temp/
+
+# TicketFlow Java backend
+target/
+*.class
+*.log
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.env
