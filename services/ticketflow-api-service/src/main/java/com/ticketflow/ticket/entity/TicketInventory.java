@@ -1,5 +1,6 @@
 package com.ticketflow.ticket.entity;
 
+import com.ticketflow.common.exception.InsufficientTicketCapacityException;
 import com.ticketflow.event.entity.Event;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,6 +18,11 @@ import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+/**
+ * @author Kayahan Güneri
+ * Purpose: Represents ticket inventory for an event and protects stock consistency with optimistic locking.
+ * Date: 2026-05-29
+ */
 @Entity
 @Table(name = "ticket_inventories")
 public class TicketInventory {
@@ -60,6 +66,25 @@ public class TicketInventory {
 
     public static TicketInventory createForEvent(Event event, int totalCapacity) {
         return new TicketInventory(event, totalCapacity);
+    }
+
+    /**
+     * Reserves tickets by moving stock from available capacity to reserved capacity.
+     * The @Version field protects this state change against lost updates.
+     */
+    public void reserve(int ticketCount) {
+        if (ticketCount <= 0) {
+            throw new IllegalArgumentException("Ticket count must be positive");
+        }
+
+        if (availableCapacity < ticketCount) {
+            throw new InsufficientTicketCapacityException(
+                    "Insufficient ticket capacity. Requested: " + ticketCount + ", available: " + availableCapacity
+            );
+        }
+
+        this.availableCapacity -= ticketCount;
+        this.reservedCapacity += ticketCount;
     }
 
     @PrePersist
