@@ -10,19 +10,27 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * @author Kayahan Güneri
+ * Purpose: Polls pending outbox events and delegates Kafka publishing.
+ * Date: 2026-05-30
+ */
 @Component
 public class OutboxPublisherScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxPublisherScheduler.class);
 
     private final OutboxService outboxService;
+    private final OutboxPublisher outboxPublisher;
     private final int batchSize;
 
     public OutboxPublisherScheduler(
             OutboxService outboxService,
+            OutboxPublisher outboxPublisher,
             @Value("${ticketflow.outbox.publisher.batch-size:20}") int batchSize
     ) {
         this.outboxService = outboxService;
+        this.outboxPublisher = outboxPublisher;
         this.batchSize = batchSize;
     }
 
@@ -34,16 +42,10 @@ public class OutboxPublisherScheduler {
             return;
         }
 
-        log.info("Found {} pending outbox event(s) ready for publishing", pendingEvents.size());
+        log.info("Found {} pending outbox event(s) ready for Kafka publishing", pendingEvents.size());
 
         for (OutboxEvent event : pendingEvents) {
-            log.info(
-                    "Outbox event ready: id={}, eventType={}, aggregateType={}, aggregateId={}",
-                    event.getId(),
-                    event.getEventType(),
-                    event.getAggregateType(),
-                    event.getAggregateId()
-            );
+            outboxPublisher.publish(event);
         }
     }
 }

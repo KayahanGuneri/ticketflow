@@ -16,6 +16,11 @@ import org.hibernate.type.SqlTypes;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+/**
+ * @author Kayahan Güneri
+ * Purpose: Stores domain events that must be published after the business transaction commits.
+ * Date: 2026-05-30
+ */
 @Entity
 @Table(name = "outbox_events")
 public class OutboxEvent {
@@ -88,6 +93,13 @@ public class OutboxEvent {
         this.status = OutboxStatus.PUBLISHED;
         this.publishedAt = OffsetDateTime.now();
         this.errorMessage = null;
+    }
+
+    public void markPublishAttemptFailed(String errorMessage) {
+        // The event stays PENDING so the scheduler can retry publishing in the next polling cycle.
+        this.status = OutboxStatus.PENDING;
+        this.retryCount++;
+        this.errorMessage = errorMessage;
     }
 
     public void markAsFailed(String errorMessage) {

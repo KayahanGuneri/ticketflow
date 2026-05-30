@@ -23,6 +23,16 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
@@ -36,7 +46,11 @@ management:
         include: health,info
 
 ticketflow:
+  kafka:
+    topics:
+      reservation-created: ticket.reservation.created
   outbox:
     publisher:
       fixed-delay-ms: 5000
       batch-size: 20
+      publish-timeout-seconds: 10
