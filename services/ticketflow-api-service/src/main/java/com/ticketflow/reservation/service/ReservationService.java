@@ -5,6 +5,7 @@ import com.ticketflow.common.exception.DuplicateRequestException;
 import com.ticketflow.common.exception.ResourceNotFoundException;
 import com.ticketflow.event.entity.Event;
 import com.ticketflow.event.repository.EventRepository;
+import com.ticketflow.outbox.service.OutboxService;
 import com.ticketflow.reservation.dto.CreateReservationRequest;
 import com.ticketflow.reservation.dto.ReservationResponse;
 import com.ticketflow.reservation.entity.Reservation;
@@ -20,7 +21,7 @@ import java.util.UUID;
 
 /**
  * @author Kayahan Güneri
- * Purpose: Orchestrates transactional reservation creation, idempotency checks, and stock updates.
+ * Purpose: Orchestrates transactional reservation creation, idempotency checks, stock updates, and outbox persistence.
  * Date: 2026-05-29
  */
 @Service
@@ -31,20 +32,23 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final EventRepository eventRepository;
     private final TicketInventoryRepository ticketInventoryRepository;
+    private final OutboxService outboxService;
 
     public ReservationService(
             ReservationRepository reservationRepository,
             EventRepository eventRepository,
-            TicketInventoryRepository ticketInventoryRepository
+            TicketInventoryRepository ticketInventoryRepository,
+            OutboxService outboxService
     ) {
         this.reservationRepository = reservationRepository;
         this.eventRepository = eventRepository;
         this.ticketInventoryRepository = ticketInventoryRepository;
+        this.outboxService = outboxService;
     }
 
     /**
-     * Creates a reservation and decreases ticket stock in the same transaction.
-     * Idempotency is checked before mutating inventory to prevent duplicate stock decreases.
+     * Creates a reservation, decreases ticket stock, and persists the outbox event in the same transaction.
+     * Idempotency is checked before mutating inventory to prevent duplicate stock decreases and duplicate events.
      */
     @Transactional
     public ReservationCreationResult createReservation(CreateReservationRequest request, String idempotencyKeyHeader) {
@@ -88,6 +92,8 @@ public class ReservationService {
         );
 
         Reservation savedReservation = reservationRepository.save(reservation);
+
+        outboxService.saveReservationCreatedEvent(savedReservation);
 
         return new ReservationCreationResult(toResponse(savedReservation), true);
     }
