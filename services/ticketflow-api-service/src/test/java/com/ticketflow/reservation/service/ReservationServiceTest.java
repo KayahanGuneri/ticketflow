@@ -5,6 +5,7 @@ import com.ticketflow.common.exception.DuplicateRequestException;
 import com.ticketflow.common.exception.InsufficientTicketCapacityException;
 import com.ticketflow.event.entity.Event;
 import com.ticketflow.event.repository.EventRepository;
+import com.ticketflow.outbox.service.OutboxService;
 import com.ticketflow.reservation.dto.CreateReservationRequest;
 import com.ticketflow.reservation.entity.Reservation;
 import com.ticketflow.reservation.repository.ReservationRepository;
@@ -33,7 +34,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * @author Kayahan Güneri
- * Purpose: Verifies reservation transaction orchestration, idempotency behavior, and stock consistency.
+ * Purpose: Verifies reservation transaction orchestration, idempotency behavior, stock consistency, and outbox persistence.
  * Date: 2026-05-29
  */
 @ExtendWith(MockitoExtension.class)
@@ -47,6 +48,9 @@ class ReservationServiceTest {
 
     @Mock
     private TicketInventoryRepository ticketInventoryRepository;
+
+    @Mock
+    private OutboxService outboxService;
 
     @InjectMocks
     private ReservationService reservationService;
@@ -91,6 +95,31 @@ class ReservationServiceTest {
         assertEquals(2, inventory.getReservedCapacity());
 
         verify(reservationRepository).save(any(Reservation.class));
+        verify(outboxService).saveReservationCreatedEvent(any(Reservation.class));
+    }
+
+    @Test
+    void shouldPersistOutboxEventWhenReservationIsCreated() {
+        Event event = createEvent(eventId);
+        TicketInventory inventory = TicketInventory.createForEvent(event, 5);
+        CreateReservationRequest request = new CreateReservationRequest(eventId, userId, 2);
+
+        when(reservationRepository.findByIdempotencyKey(idempotencyKey))
+                .thenReturn(Optional.empty());
+        when(eventRepository.findById(eventId))
+                .thenReturn(Optional.of(event));
+        when(ticketInventoryRepository.findByEventId(eventId))
+                .thenReturn(Optional.of(inventory));
+        when(reservationRepository.save(any(Reservation.class)))
+                .thenAnswer(invocation -> {
+                    Reservation reservation = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(reservation, "id", UUID.randomUUID());
+                    return reservation;
+                });
+
+        reservationService.createReservation(request, idempotencyKey);
+
+        verify(outboxService).saveReservationCreatedEvent(any(Reservation.class));
     }
 
     @Test
@@ -115,6 +144,7 @@ class ReservationServiceTest {
         verify(eventRepository, never()).findById(any());
         verify(ticketInventoryRepository, never()).findByEventId(any());
         verify(reservationRepository, never()).save(any(Reservation.class));
+        verify(outboxService, never()).saveReservationCreatedEvent(any(Reservation.class));
     }
 
     @Test
@@ -136,6 +166,7 @@ class ReservationServiceTest {
         verify(eventRepository, never()).findById(any());
         verify(ticketInventoryRepository, never()).findByEventId(any());
         verify(reservationRepository, never()).save(any(Reservation.class));
+        verify(outboxService, never()).saveReservationCreatedEvent(any(Reservation.class));
     }
 
     @Test
@@ -160,6 +191,7 @@ class ReservationServiceTest {
         assertEquals(0, inventory.getReservedCapacity());
 
         verify(reservationRepository, never()).save(any(Reservation.class));
+        verify(outboxService, never()).saveReservationCreatedEvent(any(Reservation.class));
     }
 
     @Test
@@ -175,6 +207,7 @@ class ReservationServiceTest {
         verify(eventRepository, never()).findById(any());
         verify(ticketInventoryRepository, never()).findByEventId(any());
         verify(reservationRepository, never()).save(any(Reservation.class));
+        verify(outboxService, never()).saveReservationCreatedEvent(any(Reservation.class));
     }
 
     private Event createEvent(UUID id) {

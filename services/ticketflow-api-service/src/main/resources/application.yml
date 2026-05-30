@@ -34,3 +34,9 @@ management:
     web:
       exposure:
         include: health,info
+
+ticketflow:
+  outbox:
+    publisher:
+      fixed-delay-ms: 5000
+      batch-size: 20
