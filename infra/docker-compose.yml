@@ -54,6 +54,23 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       DYNAMIC_CONFIG_ENABLED: "true"
 
+  payment-simulator-service:
+    build:
+      context: ../services/payment-simulator-service
+      dockerfile: Dockerfile
+    container_name: ticketflow-payment-simulator-service
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      PAYMENT_SIMULATOR_SUCCESS_RATE: 80
+      PAYMENT_SIMULATOR_DELAY_MS: 500
+      PAYMENT_SIMULATOR_DEFAULT_AMOUNT: 100.00
+
 volumes:
   ticketflow_postgres_data:
   ticketflow_kafka_data:

@@ -175,10 +175,18 @@ The following features are intentionally excluded before the MVP is complete:
 
 Current branch:
 
-feature/project-planning
+feature/payment-simulator
 
 Current phase:
 
-Phase 0 — Project Planning & Architecture
+Phase 5 — Payment Simulator Service
 
-No production code is written in Phase 0. This phase focuses on architecture, scope, documentation, design decisions, and development workflow.
+This phase adds `payment-simulator-service`, a small Spring Boot service that consumes `ReservationCreatedEvent`, simulates payment success or failure, and publishes `PaymentCompletedEvent` or `PaymentFailedEvent` through Kafka.
+
+Phase 5 is verified with:
+
+- Maven tests
+- Docker Compose build
+- Docker Compose runtime
+- Kafka UI manual event production
+- `ticket.payment.completed` / `ticket.payment.failed` output topic verification

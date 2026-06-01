@@ -1,0 +1,39 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: payment-simulator-service
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: payment-simulator-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+ticketflow:
+  kafka:
+    topics:
+      reservation-created: ticket.reservation.created
+      payment-completed: ticket.payment.completed
+      payment-failed: ticket.payment.failed
+
+payment-simulator:
+  success-rate: ${PAYMENT_SIMULATOR_SUCCESS_RATE:80}
+  simulated-delay-ms: ${PAYMENT_SIMULATOR_DELAY_MS:500}
+  default-amount: ${PAYMENT_SIMULATOR_DEFAULT_AMOUNT:100.00}
